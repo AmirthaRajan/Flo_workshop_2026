@@ -1,12 +1,11 @@
 """Load workshop knowledge sources into LangChain Documents."""
 
 import ipaddress
+import os
 import socket
 from pathlib import Path
 from urllib.parse import urlparse
 
-import requests
-from bs4 import BeautifulSoup
 from docx import Document as WordDocument
 from langchain_core.documents import Document
 from pypdf import PdfReader
@@ -58,6 +57,10 @@ def load_file(file_path: str | Path) -> list[Document]:
 
 def load_url(url: str) -> list[Document]:
     """Extract readable text from a public or locally accessible web page."""
+    # WebBaseLoader reads this setting when imported, so set it first.
+    os.environ.setdefault("USER_AGENT", "RAG-Workshop/1.0")
+    from langchain_community.document_loaders import WebBaseLoader
+
     parsed_url = urlparse(url)
     if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
         raise ValueError("Enter a complete URL beginning with http:// or https://.")
@@ -80,21 +83,19 @@ def load_url(url: str) -> list[Document]:
                 "only when intentionally loading a trusted internal wiki."
             )
 
-    # The destination was resolved and checked above, and redirects stay disabled.
-    response = requests.get(  # lgtm[py/full-ssrf]
-        url,
-        headers={"User-Agent": "RAG-Workshop/1.0"},
-        timeout=15,
-        allow_redirects=False,
+    web_loader = WebBaseLoader(
+        web_paths=[url],
+        header_template={"User-Agent": "RAG-Workshop/1.0"},
+        requests_kwargs={"timeout": 15, "allow_redirects": False},
+        raise_for_status=True,
+        show_progress=False,
     )
-    if response.is_redirect:
-        raise ValueError("Redirecting URLs are not supported; enter the final URL.")
-    response.raise_for_status()
-    soup = BeautifulSoup(response.text, "html.parser")
-    for unwanted in soup(["script", "style", "nav", "footer"]):
-        unwanted.decompose()
-
-    text = "\n".join(soup.stripped_strings)
+    loaded_documents = web_loader.load()
+    text = "\n".join(
+        document.page_content.strip()
+        for document in loaded_documents
+        if document.page_content.strip()
+    )
     if not text:
         raise ValueError("No readable text was found at that URL.")
     return [Document(page_content=text, metadata={"source": url})]
