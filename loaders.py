@@ -28,14 +28,17 @@ def load_file(file_path: str | Path) -> list[Document]:
 
     if suffix == ".pdf":
         reader = PdfReader(path)
-        return [
-            Document(
-                page_content=page.extract_text() or "",
-                metadata={"source": path.name, "page": page_number + 1},
-            )
-            for page_number, page in enumerate(reader.pages)
-            if page.extract_text()
-        ]
+        documents = []
+        for page_number, page in enumerate(reader.pages):
+            text = page.extract_text() or ""
+            if text.strip():
+                documents.append(
+                    Document(
+                        page_content=text,
+                        metadata={"source": path.name, "page": page_number + 1},
+                    )
+                )
+        return documents
 
     if suffix == ".docx":
         word_document = WordDocument(path)

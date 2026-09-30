@@ -29,7 +29,17 @@ def create_vector_store(chunks: list[Document]) -> FAISS:
 
     # Embeddings let us compare meaning instead of only matching exact words.
     embeddings = get_embeddings()
-    vector_store = FAISS.from_documents(chunks, embeddings)
+    index_file = Path(settings.vector_store_path) / "index.faiss"
+    if index_file.exists():
+        vector_store = FAISS.load_local(
+            settings.vector_store_path,
+            embeddings,
+            allow_dangerous_deserialization=True,
+        )
+        vector_store.add_documents(chunks)
+    else:
+        vector_store = FAISS.from_documents(chunks, embeddings)
+
     Path(settings.vector_store_path).mkdir(parents=True, exist_ok=True)
     vector_store.save_local(settings.vector_store_path)
     return vector_store

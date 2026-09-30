@@ -4,9 +4,11 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
 
 import loaders
 import rag
@@ -69,6 +71,27 @@ class RagTests(unittest.TestCase):
         self.assertIn("Use Python 3.11.", prompt)
         self.assertIn("Which Python version?", prompt)
         self.assertIn(rag.FALLBACK_ANSWER, prompt)
+
+    def test_new_chunks_are_added_to_persisted_vector_store(self):
+        class FakeEmbeddings(Embeddings):
+            def embed_documents(self, texts):
+                return [[float(len(text)), 1.0] for text in texts]
+
+            def embed_query(self, text):
+                return [float(len(text)), 1.0]
+
+        with tempfile.TemporaryDirectory() as directory:
+            test_settings = SimpleNamespace(vector_store_path=directory)
+            with (
+                patch.object(rag, "settings", test_settings),
+                patch.object(rag, "get_embeddings", return_value=FakeEmbeddings()),
+            ):
+                rag.create_vector_store([Document(page_content="first")])
+                vector_store = rag.create_vector_store(
+                    [Document(page_content="second")]
+                )
+
+        self.assertEqual(vector_store.index.ntotal, 2)
 
 
 if __name__ == "__main__":
