@@ -80,7 +80,8 @@ def load_url(url: str) -> list[Document]:
                 "only when intentionally loading a trusted internal wiki."
             )
 
-    response = requests.get(
+    # The destination was resolved and checked above, and redirects stay disabled.
+    response = requests.get(  # lgtm[py/full-ssrf]
         url,
         headers={"User-Agent": "RAG-Workshop/1.0"},
         timeout=15,
