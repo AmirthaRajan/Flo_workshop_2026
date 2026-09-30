@@ -207,7 +207,10 @@ streamlit run app.py
 
 The simple URL loader works for public documentation and wiki-style pages.
 Authenticated/private Confluence pages may require a separate authenticated
-integration, which is intentionally outside this workshop.
+integration, which is intentionally outside this workshop. Private network URLs
+are blocked by default; for a trusted internal wiki, set
+`ALLOW_PRIVATE_URLS=true`. Do not enable this when exposing the app to untrusted
+users.
 
 ## 45-minute hands-on flow
 

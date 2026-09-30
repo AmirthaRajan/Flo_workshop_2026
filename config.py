@@ -16,6 +16,10 @@ def _number(name: str, default: int) -> int:
     return value
 
 
+def _flag(name: str, default: bool = False) -> bool:
+    return os.getenv(name, str(default)).lower() in {"1", "true", "yes"}
+
+
 @dataclass(frozen=True)
 class Settings:
     model_provider: str = os.getenv("MODEL_PROVIDER", "ollama").lower()
@@ -30,6 +34,7 @@ class Settings:
     chunk_size: int = _number("CHUNK_SIZE", 800)
     chunk_overlap: int = _number("CHUNK_OVERLAP", 100)
     vector_store_path: str = os.getenv("VECTOR_STORE_PATH", "data/vector_store")
+    allow_private_urls: bool = _flag("ALLOW_PRIVATE_URLS")
 
     def __post_init__(self) -> None:
         supported = {"ollama", "openai"}

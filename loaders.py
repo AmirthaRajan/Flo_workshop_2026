@@ -1,5 +1,7 @@
 """Load workshop knowledge sources into LangChain Documents."""
 
+import ipaddress
+import socket
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -8,6 +10,8 @@ from bs4 import BeautifulSoup
 from docx import Document as WordDocument
 from langchain_core.documents import Document
 from pypdf import PdfReader
+
+from config import settings
 
 DOCUMENTS_DIR = Path("data/documents")
 
@@ -57,12 +61,33 @@ def load_url(url: str) -> list[Document]:
     parsed_url = urlparse(url)
     if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
         raise ValueError("Enter a complete URL beginning with http:// or https://.")
+    if parsed_url.username or parsed_url.password:
+        raise ValueError("URLs containing usernames or passwords are not supported.")
+
+    if not settings.allow_private_urls:
+        try:
+            addresses = {
+                result[4][0]
+                for result in socket.getaddrinfo(parsed_url.hostname, None)
+            }
+        except socket.gaierror as error:
+            raise ValueError("The URL hostname could not be resolved.") from error
+        if not addresses or any(
+            not ipaddress.ip_address(address).is_global for address in addresses
+        ):
+            raise ValueError(
+                "Private network URLs are blocked. Set ALLOW_PRIVATE_URLS=true "
+                "only when intentionally loading a trusted internal wiki."
+            )
 
     response = requests.get(
         url,
         headers={"User-Agent": "RAG-Workshop/1.0"},
         timeout=15,
+        allow_redirects=False,
     )
+    if response.is_redirect:
+        raise ValueError("Redirecting URLs are not supported; enter the final URL.")
     response.raise_for_status()
     soup = BeautifulSoup(response.text, "html.parser")
     for unwanted in soup(["script", "style", "nav", "footer"]):

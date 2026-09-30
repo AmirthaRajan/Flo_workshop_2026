@@ -53,6 +53,14 @@ class LoaderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "complete URL"):
             loaders.load_url("example.com/docs")
 
+    def test_private_url_is_blocked_by_default(self):
+        private_address = [(None, None, None, None, ("127.0.0.1", 0))]
+        with (
+            patch.object(loaders.socket, "getaddrinfo", return_value=private_address),
+            self.assertRaisesRegex(ValueError, "Private network URLs"),
+        ):
+            loaders.load_url("http://localhost/project")
+
 
 class RagTests(unittest.TestCase):
     def test_split_documents_keeps_source_metadata(self):
