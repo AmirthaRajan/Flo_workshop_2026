@@ -1,0 +1,71 @@
+"""Load workshop knowledge sources into LangChain Documents."""
+
+from pathlib import Path
+from urllib.parse import urlparse
+
+import requests
+from bs4 import BeautifulSoup
+from docx import Document as WordDocument
+from langchain_core.documents import Document
+from pypdf import PdfReader
+
+DOCUMENTS_DIR = Path("data/documents")
+
+
+def save_uploaded_file(uploaded_file) -> Path:
+    """Save an upload locally so it can be inspected after the workshop."""
+    DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
+    # Keep only the filename so an upload cannot write outside the data folder.
+    file_path = DOCUMENTS_DIR / Path(uploaded_file.name).name
+    file_path.write_bytes(uploaded_file.getvalue())
+    return file_path
+
+
+def load_file(file_path: str | Path) -> list[Document]:
+    """Load a PDF or DOCX file into a shared document representation."""
+    path = Path(file_path)
+    suffix = path.suffix.lower()
+
+    if suffix == ".pdf":
+        reader = PdfReader(path)
+        return [
+            Document(
+                page_content=page.extract_text() or "",
+                metadata={"source": path.name, "page": page_number + 1},
+            )
+            for page_number, page in enumerate(reader.pages)
+            if page.extract_text()
+        ]
+
+    if suffix == ".docx":
+        word_document = WordDocument(path)
+        text = "\n".join(
+            paragraph.text
+            for paragraph in word_document.paragraphs
+            if paragraph.text.strip()
+        )
+        return [Document(page_content=text, metadata={"source": path.name})]
+
+    raise ValueError("Unsupported file type. Please upload a PDF or DOCX file.")
+
+
+def load_url(url: str) -> list[Document]:
+    """Extract readable text from a public or locally accessible web page."""
+    parsed_url = urlparse(url)
+    if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+        raise ValueError("Enter a complete URL beginning with http:// or https://.")
+
+    response = requests.get(
+        url,
+        headers={"User-Agent": "RAG-Workshop/1.0"},
+        timeout=15,
+    )
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, "html.parser")
+    for unwanted in soup(["script", "style", "nav", "footer"]):
+        unwanted.decompose()
+
+    text = "\n".join(soup.stripped_strings)
+    if not text:
+        raise ValueError("No readable text was found at that URL.")
+    return [Document(page_content=text, metadata={"source": url})]
