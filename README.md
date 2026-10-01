@@ -1,291 +1,275 @@
 # Building Your First RAG Application
 ## Project Onboarding Chatbot
 
-A beginner-friendly, 45-minute hands-on workshop. Build a small chatbot that
-answers questions from project PDFs, Word documents, web pages, and accessible
-wiki or Confluence pages.
+A step-by-step, interactive guide to building and running a local Retrieval-Augmented Generation (RAG) application that answers questions directly from project PDFs, Word documents, web pages, and accessible internal documentation.
 
-## What we are building
+---
 
-New team members often search many documents before they can run a project or
-understand a process. This Streamlit app lets you add project knowledge, ask a
-question, and inspect both the answer and the source chunks used to create it.
+## 1. What We Are Building
 
-The app runs locally with either:
+When new members join a project, they face a common pain point: **information fragmentation**. Architecture diagrams, setup procedures, API specs, and team guidelines are scattered across PDFs, Word documents, and wikis.
 
-- **Ollama** and open-source models (fully offline after models are downloaded)
-- **OpenAI** as an optional API provider
+This application provides a unified assistant that:
+1. **Ingests** private team documents securely on your machine.
+2. **Indexes** and creates vector embeddings of those documents.
+3. **Retrieves** the most relevant excerpts when you ask a question.
+4. **Generates** an accurate, grounded answer backed by verifiable source citations.
 
-## What is RAG?
+It runs **100% locally and offline** using **Ollama**, or optionally with **OpenAI**.
 
-Retrieval-Augmented Generation (RAG) is like an open-book exam:
+---
 
-> Instead of asking the LLM to remember everything, we first search the
-> project's documentation, then give the relevant information to the LLM.
+## 2. What is RAG? (The Open-Book Analogy)
 
-The LLM does not automatically know the project's private documentation. RAG
-retrieves relevant project information first and gives that information to the
-LLM as context.
+Think of standard LLMs versus RAG like an exam:
 
-## RAG architecture
+* **Standard LLM (Closed-Book Exam):** The model relies solely on knowledge memorized during its training cutoff. It knows nothing about your company's proprietary code, internal repos, or private designs—and may hallucinate plausible-sounding guesses.
+* **RAG (Open-Book Exam):** When a user asks a question, the system first retrieves the exact relevant pages from your private knowledge base, places those facts directly into the prompt context, and asks the model to formulate an answer using only those facts.
+
+> **Key Rule:** We do not retrain or fine-tune the model. We search first, inject the relevant facts into the prompt, and let the LLM synthesize the answer.
+
+---
+
+## 3. The Complete RAG Architecture
+
+Follow the data flow from raw documents to final answer:
 
 ```text
-                ┌───────────────────┐
-                │ Knowledge Sources │
-                │ PDF / DOCX / Web  │
-                └─────────┬─────────┘
-                          │
-                          ▼
-                ┌───────────────────┐
-                │ Document Loading  │
-                └─────────┬─────────┘
-                          │
-                          ▼
-                ┌───────────────────┐
-                │ Text Chunking     │
-                └─────────┬─────────┘
-                          │
-                          ▼
-                ┌───────────────────┐
-                │ Embeddings        │
-                └─────────┬─────────┘
-                          │
-                          ▼
-                ┌───────────────────┐
-                │ Vector Store      │
-                │       FAISS       │
-                └─────────┬─────────┘
-                          │
-                    User Question
-                          │
-                          ▼
-                ┌───────────────────┐
-                │ Query Embedding   │
-                └─────────┬─────────┘
-                          │
-                          ▼
-                ┌───────────────────┐
-                │ Similarity Search │
-                └─────────┬─────────┘
-                          │
-                          ▼
-                ┌───────────────────┐
-                │ Retrieved Context │
-                └─────────┬─────────┘
-                          │
-                          ▼
-                ┌───────────────────┐
-                │ Prompt + Context  │
-                └─────────┬─────────┘
-                          │
-                          ▼
-                ┌───────────────────┐
-                │ LLM Generation    │
-                └─────────┬─────────┘
-                          │
-                          ▼
-                      Final Answer
+ ┌────────────────────────────────────────────────────────┐
+ │ 1. Ingestion Phase                                     │
+ │                                                        │
+ │  ┌─────────────────────┐                               │
+ │  │  Knowledge Sources  │ (PDF, DOCX / MHTML, Web URL)  │
+ │  └──────────┬──────────┘                               │
+ │             ▼                                          │
+ │  ┌─────────────────────┐                               │
+ │  │  Document Loaders   │ (Extract plain text & metadata│
+ │  └──────────┬──────────┘                               │
+ │             ▼                                          │
+ │  ┌─────────────────────┐                               │
+ │  │    Text Chunking    │ (Recursive character split,   │
+ │  │                     │  CHUNK_SIZE + CHUNK_OVERLAP)  │
+ │  └──────────┬──────────┘                               │
+ │             ▼                                          │
+ │  ┌─────────────────────┐                               │
+ │  │  Embedding Model    │ (Converts text chunks into    │
+ │  │                     │  high-dimensional vectors)    │
+ │  └──────────┬──────────┘                               │
+ │             ▼                                          │
+ │  ┌─────────────────────┐                               │
+ │  │ Vector Store (FAISS)│ (Saved locally to disk)       │
+ │  └─────────────────────┘                               │
+ └────────────────────────────────────────────────────────┘
+
+ ┌────────────────────────────────────────────────────────┐
+ │ 2. Query & Generation Phase                            │
+ │                                                        │
+ │      User Question                                     │
+ │             │                                          │
+ │             ▼                                          │
+ │  ┌─────────────────────┐                               │
+ │  │  Question Embedding │ (Uses the SAME embedding model│
+ │  └──────────┬──────────┘                               │
+ │             ▼                                          │
+ │  ┌─────────────────────┐                               │
+ │  │  Similarity Search  │ (Cosine/L2 distance in FAISS; │
+ │  │                     │  fetches TOP_K chunks)        │
+ │  └──────────┬──────────┘                               │
+ │             ▼                                          │
+ │  ┌─────────────────────┐                               │
+ │  │  Retrieved Context  │ (Top matching excerpts)       │
+ │  └──────────┬──────────┘                               │
+ │             ▼                                          │
+ │  ┌─────────────────────┐                               │
+ │  │   Prompt Assembly   │ (Combines System Instructions │
+ │  │                     │  + Context + User Question)   │
+ │  └──────────┬──────────┘                               │
+ │             ▼                                          │
+ │  ┌─────────────────────┐                               │
+ │  │   LLM Generation    │ (Synthesizes factual answer)  │
+ │  └──────────┬──────────┘                               │
+ │             ▼                                          │
+ │     Answer & Citations                                 │
+ └────────────────────────────────────────────────────────┘
 ```
 
-1. **Load documents** from PDF, DOCX, or a URL.
-2. **Split documents into chunks** so we do not send every page to the LLM.
-3. **Convert chunks into embeddings** (numbers representing meaning).
-4. **Store embeddings in FAISS**, a local vector database.
-5. **Convert the user's question into an embedding** with the same model.
-6. **Retrieve the most relevant chunks** using vector similarity.
-7. **Put the retrieved chunks into a prompt** as context.
-8. **Ask the LLM to generate the answer** using only that context.
+### The 8 Steps Behind the Code
 
-Open `rag.py` to see these steps without an agent framework or hidden chain.
+1. **Document Loading (`loaders.py`):** Reads files (PDF, DOCX, Confluence MHTML exports) and extracts clean text with source metadata.
+2. **Text Chunking (`rag.py`):** Splits long documents into manageable chunks (default: 800 characters) with overlap (100 characters) to avoid splitting sentences or thoughts in half.
+3. **Embedding Generation (`providers.py`):** Passes chunks through an embedding model (`nomic-embed-text`) which maps semantic meaning into numbers (vectors).
+4. **Vector Storage (`rag.py`):** Indexes the vectors inside a local FAISS index on disk (`data/vector_store`).
+5. **Query Embedding:** Converts incoming user questions into vector representations using the identical embedding model.
+6. **Vector Search:** Performs fast similarity search against FAISS to retrieve the top $K$ most semantically relevant text chunks.
+7. **Prompt Injection:** Injects the retrieved chunks directly into a prompt template alongside the user question.
+8. **LLM Generation:** The LLM produces a concise, accurate answer strictly grounded in the provided context.
 
-## Learning objectives
+---
 
-By the end, you should understand:
+## 4. Key Concepts & Tuning Parameters
 
-- what embeddings represent and what vector search does
-- why chunking and overlap are useful
-- how retrieval selects context for an LLM
-- why RAG helps with private or project-specific knowledge
-- how generation and embedding providers can be switched independently
+When configuring a RAG pipeline, you control three primary knobs in `.env`:
 
-## Prerequisites
+* **`CHUNK_SIZE` (e.g., 800):** How many characters each document chunk contains.
+  * *Too small:* Loses context, sentences get fragmented.
+  * *Too large:* Retrieves diluted information, exceeds prompt limits, or distracts the LLM.
+* **`CHUNK_OVERLAP` (e.g., 100):** The number of characters shared between adjacent chunks. This prevents losing critical context that falls right on a boundary.
+* **`TOP_K` (e.g., 4):** How many top matching chunks are retrieved and passed to the LLM.
 
-- Python 3.11 or newer
-- [Ollama](https://ollama.com/download) for local mode
-- an Ollama chat model and embedding model that fit your machine
-- optionally, an OpenAI API key for OpenAI mode
+---
 
-No OpenAI account is required. Ollama models vary in size and hardware needs,
-so choose compatible models from the Ollama library rather than treating one
-model as mandatory.
+## 5. Hardware Specifications & Ollama Model Sizing
 
-## Installation
+Different team members have different computers (laptops with integrated graphics vs. workstations with dedicated GPUs). Ollama allows you to pick the model size that best matches your machine:
+
+| Machine Spec | Recommended LLM | Download Size | RAM / VRAM | Real-World Performance & Trade-off |
+|---|---|---|---|---|
+| **Entry / Standard Laptop**<br>*(Intel/M-series/AMD, integrated graphics)* | `llama3.2:3b` | ~2.0 GB | 8 GB System RAM | **Lightweight & Fast:** Downloads in 1–2 minutes; responsive even without a dedicated GPU. |
+| **Mid-range / Workstation**<br>*(16 GB+ RAM or 6–8 GB VRAM GPU)* | `llama3.1:8b` or `qwen2.5:7b`<br>*(Sweet Spot)* | ~4.7 GB | 16 GB RAM or 6 GB+ VRAM | **Best Balance:** Fits 100% inside modern GPU VRAM for near-instant responses (~30–50 tokens/sec) and strong reasoning. |
+| **High-end / Enthusiast**<br>*(32 GB–64 GB RAM + 10 GB+ GPU)* | `qwen2.5:32b` | ~19 GB | 32 GB–64 GB RAM / 10 GB+ VRAM | **Deepest Technical Reasoning:** Unmatched comprehension of dense architecture & technical documents; splits layers between GPU and system RAM (~6–12 tokens/sec). |
+
+> **Universal Embedding Model:** `nomic-embed-text` (~274 MB) is lightweight, highly accurate for retrieval, and runs smoothly on all machines.
+
+---
+
+## 6. Setup & Installation
+
+### Step 1: Clone the Repository & Setup Environment
 
 ```bash
 git clone https://github.com/AmirthaRajan/Flo_workshop_2026.git
 cd Flo_workshop_2026
+
+# Create virtual environment
 python -m venv .venv
-source .venv/bin/activate       # macOS/Linux
-pip install -r requirements.txt
-cp .env.example .env
-```
 
-On Windows PowerShell, activate with:
-
-```powershell
+# Activate virtual environment
+# macOS / Linux:
+source .venv/bin/activate
+# Windows PowerShell:
 .venv\Scripts\Activate.ps1
-Copy-Item .env.example .env
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create your local environment file
+cp .env.example .env    # Linux / macOS
+Copy-Item .env.example .env  # Windows PowerShell
 ```
 
-Edit `.env` before starting the app.
+### Step 2: Download Ollama & Pull Your Models
 
-## Ollama setup (offline mode)
-
-Install Ollama, start it if your operating system does not start it
-automatically, and choose suitable models based on your hardware specs:
-
-### Recommended Model Sizes by Hardware Spec
-
-| Tier / Spec | Recommended LLM | Download Size | RAM / VRAM Needs | Performance & Trade-off |
-|---|---|---|---|---|
-| **Entry / Standard Laptop** (8 GB – 16 GB RAM, integrated graphics) | `llama3.2:3b` | ~2.0 GB | 8 GB System RAM | Fast download and responsive execution; good for quick testing and basic QA. |
-| **Mid-range / Workstation** (16 GB – 32 GB RAM or 6–8 GB VRAM GPU) | `llama3.1:8b` or `qwen2.5:7b` *(Sweet Spot)* | ~4.7 GB | 16 GB RAM or 6 GB+ VRAM | **Best balance:** Fits entirely in modern GPU VRAM for near-instant answers (~30–50 tokens/sec) with strong reasoning. |
-| **High-end / Enthusiast** (32 GB – 64 GB RAM + 10 GB+ GPU) | `qwen2.5:32b` | ~19 GB | 32 GB – 64 GB RAM / 10 GB+ VRAM | **Deepest reasoning & lowest hallucination:** Excels at dense technical onboarding docs; splits layers across GPU + RAM (~6–12 tokens/sec). |
-
-> **Recommended embedding model:** `nomic-embed-text` (~274 MB) works efficiently across all tiers.
-
-Pull your chosen models:
+1. Download and start [Ollama](https://ollama.com/download).
+2. Pull the embedding model and the LLM that fits your hardware:
 
 ```bash
-# Example for standard setup (sweet spot)
+# Recommended default (the sweet spot):
 ollama pull llama3.1:8b
 ollama pull nomic-embed-text
 
-# Or for lightweight laptops
+# Or for lightweight laptops:
 ollama pull llama3.2
 ollama pull nomic-embed-text
 
-# Or for high-end reasoning
+# Or for high-end workstations:
 ollama pull qwen2.5:32b
 ollama pull nomic-embed-text
 ```
 
-Then configure their exact names in `.env`:
+### Step 3: Configure `.env`
+
+Open your local `.env` file and set your selected models:
 
 ```env
 MODEL_PROVIDER=ollama
 EMBEDDING_PROVIDER=ollama
+
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_LLM_MODEL=<llm-model>
-OLLAMA_EMBEDDING_MODEL=<embedding-model>
+OLLAMA_LLM_MODEL=llama3.1:8b
+OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+
+TOP_K=4
+CHUNK_SIZE=800
+CHUNK_OVERLAP=100
+VECTOR_STORE_PATH=data/vector_store
+ALLOW_PRIVATE_URLS=false
 ```
 
-After downloading the models, document ingestion and chat can run without an
-internet connection.
+*(Optional) If testing with OpenAI, set `MODEL_PROVIDER=openai`, `OPENAI_API_KEY=<your-key>`, and your preferred OpenAI models.*
 
-## OpenAI setup (optional)
+---
 
-Never commit a real API key. Put it only in your ignored `.env` file:
+## 7. Decoupled Provider Architecture
 
-```env
-MODEL_PROVIDER=openai
-EMBEDDING_PROVIDER=openai
-OPENAI_API_KEY=<your-key>
-OPENAI_LLM_MODEL=<configured-model>
-OPENAI_EMBEDDING_MODEL=<configured-model>
-```
+Notice how `providers.py` cleanly separates the embedding model from the generation LLM:
 
-OpenAI is contacted only for the stage(s) where it is selected.
+| Setup Configuration | `EMBEDDING_PROVIDER` | `MODEL_PROVIDER` | Description |
+|---|---|---|---|
+| **Fully Local (Default)** | `ollama` | `ollama` | 100% private, zero API costs, runs offline. |
+| **Hybrid (Privacy retrieval, cloud answer)** | `ollama` | `openai` | Local embeddings, fast cloud LLM completion. |
+| **Hybrid (Cloud retrieval, local answer)** | `openai` | `ollama` | Cloud embeddings, local offline generation. |
+| **Fully Cloud** | `openai` | `openai` | Fully managed cloud API services. |
 
-## Provider switching
+> **Important Rule of Embeddings:** You must use the **exact same** embedding model to query an index that was used to create it. If you switch `EMBEDDING_PROVIDER` or `OLLAMA_EMBEDDING_MODEL`, delete `data/vector_store/` and rebuild the knowledge base.
 
-`get_embeddings()` and `get_llm()` in `providers.py` are the only provider
-selection functions. The RAG pipeline does not change.
+---
 
-| Experiment | `EMBEDDING_PROVIDER` | `MODEL_PROVIDER` |
-|---|---|---|
-| Fully local | `ollama` | `ollama` |
-| Local retrieval, API answer | `ollama` | `openai` |
-| API retrieval, local answer | `openai` | `ollama` |
-| Fully OpenAI | `openai` | `openai` |
+## 8. Running the Application
 
-The same embedding model must be used to create and search an index. When
-changing the embedding provider or model, delete the contents of
-`data/vector_store/` and rebuild it. The generation model can change without
-rebuilding.
-
-## Running the application
+Launch the Streamlit web application:
 
 ```bash
 streamlit run app.py
 ```
 
-1. Confirm the two providers shown in **Configuration**.
-2. Upload PDF/DOCX files or enter an accessible URL.
-3. Select **Build / Update Knowledge Base**. New chunks are added to local
-   `data/vector_store/`.
-4. Ask a question and inspect **Sources** and **Retrieved Context**.
+### How to Demo Step-by-Step:
 
-The simple URL loader works for public documentation and wiki-style pages.
-Authenticated/private Confluence pages may require a separate authenticated
-integration, which is intentionally outside this workshop. Private network URLs
-are blocked by default; for a trusted internal wiki, set
-`ALLOW_PRIVATE_URLS=true`. Do not enable this when exposing the app to untrusted
-users.
+1. **Verify Configuration:** Check the **LLM Provider** and **Embedding Provider** status cards at the top of the interface.
+2. **Ingest Documents:**
+   * Drop sample project documents (e.g., PDFs, Word architecture designs, or Confluence `.docx` exports) into the file uploader.
+   * Or provide an accessible documentation URL.
+   * Click **Build / Update Knowledge Base**. Watch the status steps: *Loading documents &rarr; Creating chunks &rarr; Generating embeddings & building vector store*.
+3. **Ask a Question:**
+   * Submit an onboarding question (e.g., *"How do I set up the local development environment?"* or *"What is the database migration strategy?"*).
+4. **Inspect Results & Citations:**
+   * Examine the synthesized **Answer**.
+   * Review the **Sources** list showing exact file origins and page numbers.
+   * Expand **Retrieved Context** to view the exact text chunks passed to the LLM prompt.
 
-## 45-minute hands-on flow
+---
 
-| Time | Activity |
-|---|---|
-| 0–5 min | What is RAG? |
-| 5–10 min | Follow the architecture from document to answer |
-| 10–20 min | Load documents and change chunking settings |
-| 20–30 min | Create embeddings and search the FAISS vectors |
-| 30–38 min | Retrieve context, inspect the prompt, and call the LLM |
-| 38–45 min | Switch Ollama/OpenAI providers and experiment |
+## 9. Live Demonstrations & Experiments
 
-## Experiment ideas
+Try these live adjustments during your walkthrough:
 
-- Change `CHUNK_SIZE` from `800`.
-- Change `CHUNK_OVERLAP` and observe boundary context.
-- Change `TOP_K` and inspect how many chunks are retrieved.
-- Switch only the embedding provider or only the LLM provider.
-- Try another Ollama model suitable for your machine.
-- Ask a question whose answer is not in the documents.
-- Edit the visible prompt in `rag.py`.
+1. **Context Inspection:** Open the *Retrieved Context* expander in Streamlit to show that the LLM is genuinely reading the retrieved chunks, not guessing.
+2. **Handling Unanswerable Questions:** Ask a question that isn't mentioned anywhere in the uploaded docs (e.g., *"What is the company cafeteria menu?"*). Observe how the system admits it does not know rather than fabricating details.
+3. **Chunk Boundary Tuning:** In `.env`, change `CHUNK_SIZE=200` vs `CHUNK_SIZE=1200` to show how chunk granularity affects search relevance.
+4. **Instant Model Swapping:** Change `OLLAMA_LLM_MODEL` in `.env` from `llama3.2` to `qwen2.5:32b` or `llama3.1:8b` to compare response depth and speed without needing to re-index the documents.
 
-## Project structure
+---
+
+## 10. Codebase Structure
 
 ```text
-├── app.py                 # Streamlit UI
-├── config.py              # Environment settings
-├── loaders.py             # PDF, DOCX, and URL loading
-├── providers.py           # Ollama/OpenAI selection
-├── rag.py                 # Chunk, embed, retrieve, prompt, answer
-├── data/                  # Uploaded files and local FAISS index
-├── examples/              # Sample onboarding content
-└── tests/                 # Small, provider-free unit tests
+├── app.py                 # Streamlit UI interface & chat interaction
+├── config.py              # Environment configuration & parameter validation
+├── loaders.py             # Robust loaders for PDF, DOCX, Confluence MHTML & URLs
+├── providers.py           # Clean abstraction layer for Ollama and OpenAI
+├── rag.py                 # Core RAG pipeline: chunking, embedding, FAISS index, prompt assembly
+├── data/                  # Local storage for uploaded files and FAISS vector index
+├── examples/              # Sample onboarding documentation
+└── tests/                 # Fast, provider-independent unit tests
 ```
 
-## Limitations
+---
 
-This teaching demo is not a production enterprise RAG system. It has basic
-document parsing and similarity search, local FAISS storage, no authentication,
-no advanced reranking, no chat memory, no agents, no hybrid search, no
-evaluation framework, and no enterprise Confluence authentication. Re-ingesting
-the same source can add duplicate chunks.
+## 11. Production Considerations & Next Steps
 
-Only load a FAISS index created locally by this application; its metadata format
-is not safe for untrusted downloaded indexes.
+This repository is designed to teach the fundamentals of RAG clearly and transparently. Moving from this baseline to a full production enterprise system involves:
 
-## RAG checklist
-
-- [ ] Load documents
-- [ ] Split documents
-- [ ] Create embeddings
-- [ ] Store vectors
-- [ ] Embed user question
-- [ ] Retrieve relevant chunks
-- [ ] Build context
-- [ ] Generate answer
-- [ ] Inspect sources
+* **Persistent Document Stores:** Replacing local FAISS files with scalable vector databases (Qdrant, Milvus, pgvector).
+* **Advanced Retrieval:** Adding hybrid search (BM25 keyword search + dense vector retrieval) and cross-encoder rerankers (Cohere Rerank, BGE-reranker).
+* **Access Control & Auth:** Integrating enterprise role-based permissions (RBAC) so users only retrieve documents they are authorized to see.
+* **Conversational Memory:** Storing session history to support multi-turn dialogue and follow-up clarifications.
+* **Evaluation Frameworks:** Continuous evaluation of retrieval precision and generation faithfulness using frameworks like Ragas or TruLens.
