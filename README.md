@@ -142,14 +142,35 @@ Edit `.env` before starting the app.
 ## Ollama setup (offline mode)
 
 Install Ollama, start it if your operating system does not start it
-automatically, and choose suitable models:
+automatically, and choose suitable models based on your hardware specs:
+
+### Recommended Model Sizes by Hardware Spec
+
+| Tier / Spec | Recommended LLM | Download Size | RAM / VRAM Needs | Performance & Trade-off |
+|---|---|---|---|---|
+| **Entry / Standard Laptop** (8 GB – 16 GB RAM, integrated graphics) | `llama3.2:3b` | ~2.0 GB | 8 GB System RAM | Fast download and responsive execution; good for quick testing and basic QA. |
+| **Mid-range / Workstation** (16 GB – 32 GB RAM or 6–8 GB VRAM GPU) | `llama3.1:8b` or `qwen2.5:7b` *(Sweet Spot)* | ~4.7 GB | 16 GB RAM or 6 GB+ VRAM | **Best balance:** Fits entirely in modern GPU VRAM for near-instant answers (~30–50 tokens/sec) with strong reasoning. |
+| **High-end / Enthusiast** (32 GB – 64 GB RAM + 10 GB+ GPU) | `qwen2.5:32b` | ~19 GB | 32 GB – 64 GB RAM / 10 GB+ VRAM | **Deepest reasoning & lowest hallucination:** Excels at dense technical onboarding docs; splits layers across GPU + RAM (~6–12 tokens/sec). |
+
+> **Recommended embedding model:** `nomic-embed-text` (~274 MB) works efficiently across all tiers.
+
+Pull your chosen models:
 
 ```bash
-ollama pull <llm-model>
-ollama pull <embedding-model>
+# Example for standard setup (sweet spot)
+ollama pull llama3.1:8b
+ollama pull nomic-embed-text
+
+# Or for lightweight laptops
+ollama pull llama3.2
+ollama pull nomic-embed-text
+
+# Or for high-end reasoning
+ollama pull qwen2.5:32b
+ollama pull nomic-embed-text
 ```
 
-Then configure their exact names:
+Then configure their exact names in `.env`:
 
 ```env
 MODEL_PROVIDER=ollama

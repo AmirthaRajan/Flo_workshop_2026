@@ -1,11 +1,15 @@
 """Load workshop knowledge sources into LangChain Documents."""
 
+import email
+import email.policy
 import ipaddress
 import os
 import socket
+import zipfile
 from pathlib import Path
 from urllib.parse import urlparse
 
+from bs4 import BeautifulSoup
 from docx import Document as WordDocument
 from langchain_core.documents import Document
 from pypdf import PdfReader
@@ -44,6 +48,10 @@ def load_file(file_path: str | Path) -> list[Document]:
         return documents
 
     if suffix == ".docx":
+        if not zipfile.is_zipfile(path):
+            # Confluence "Export to Word" produces an MHTML file (MIME-wrapped
+            # HTML) with a .docx extension rather than a real Word document.
+            return [_load_mhtml(path)]
         word_document = WordDocument(path)
         text = "\n".join(
             paragraph.text
@@ -53,6 +61,29 @@ def load_file(file_path: str | Path) -> list[Document]:
         return [Document(page_content=text, metadata={"source": path.name})]
 
     raise ValueError("Unsupported file type. Please upload a PDF or DOCX file.")
+
+
+def _load_mhtml(path: Path) -> Document:
+    """Extract readable text from an MHTML file such as a Confluence Word export."""
+    message = email.message_from_bytes(path.read_bytes(), policy=email.policy.default)
+    html_part = next(
+        (part for part in message.walk() if part.get_content_type() == "text/html"),
+        None,
+    )
+    if html_part is None:
+        raise ValueError(
+            f"{path.name} is not a valid Word document. Re-save it as .docx in "
+            "Word or export the page as PDF."
+        )
+    soup = BeautifulSoup(html_part.get_content(), "html.parser")
+    for tag in soup(["script", "style"]):
+        tag.decompose()
+    text = "\n".join(
+        line.strip() for line in soup.get_text("\n").splitlines() if line.strip()
+    )
+    if not text:
+        raise ValueError(f"No readable text was found in {path.name}.")
+    return Document(page_content=text, metadata={"source": path.name})
 
 
 def load_url(url: str) -> list[Document]:
