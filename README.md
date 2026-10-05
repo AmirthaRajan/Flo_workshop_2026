@@ -134,6 +134,20 @@ Different team members have different computers (laptops with integrated graphic
 
 ## 6. Setup & Installation
 
+### Prerequisites (Before You Start)
+
+Make sure each attendee has the following ready:
+
+1. **OS:** Windows 10/11, macOS, or Linux.
+2. **Python:** Python 3.11+ installed and available in terminal (`python --version`).
+3. **Git:** Installed for cloning the repository.
+4. **Ollama:** Installed and running locally (for default offline setup).
+5. **Disk space:** At least 8 GB free (dependencies + model downloads).
+6. **Network access:** Internet access to install packages and pull models.
+7. **Optional OpenAI setup:** If using OpenAI, an API key and model access.
+
+For common Windows setup issues (path length, activation policy, PATH warnings), see [README-QA.md](README-QA.md).
+
 ### Step 1: Clone the Repository & Setup Environment
 
 ```bash
