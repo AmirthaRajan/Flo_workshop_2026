@@ -16,18 +16,22 @@ from config import Settings
 
 
 class ConfigTests(unittest.TestCase):
-    def test_embedding_and_model_providers_can_differ(self):
+    def test_ollama_is_the_only_supported_provider(self):
         with patch.dict(
             os.environ,
-            {"MODEL_PROVIDER": "openai", "EMBEDDING_PROVIDER": "ollama"},
+            {"MODEL_PROVIDER": "ollama", "EMBEDDING_PROVIDER": "ollama"},
         ):
             configured = Settings(
                 model_provider=os.environ["MODEL_PROVIDER"],
                 embedding_provider=os.environ["EMBEDDING_PROVIDER"],
             )
 
-        self.assertEqual(configured.model_provider, "openai")
+        self.assertEqual(configured.model_provider, "ollama")
         self.assertEqual(configured.embedding_provider, "ollama")
+
+    def test_invalid_provider_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "MODEL_PROVIDER"):
+            Settings(model_provider="openai", embedding_provider="ollama")
 
     def test_overlap_must_be_smaller_than_chunk_size(self):
         with self.assertRaisesRegex(ValueError, "CHUNK_OVERLAP"):

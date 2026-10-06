@@ -15,7 +15,7 @@ This application provides a unified assistant that:
 3. **Retrieves** the most relevant excerpts when you ask a question.
 4. **Generates** an accurate, grounded answer backed by verifiable source citations.
 
-It runs **100% locally and offline** using **Ollama**, or optionally with **OpenAI**.
+It runs **100% locally and offline** using **Ollama**.
 
 ---
 
@@ -144,7 +144,7 @@ Make sure each attendee has the following ready:
 4. **Ollama:** Installed and running locally (for default offline setup).
 5. **Disk space:** At least 8 GB free (dependencies + model downloads).
 6. **Network access:** Internet access to install packages and pull models.
-7. **Optional OpenAI setup:** If using OpenAI, an API key and model access.
+7. **Local Ollama setup:** The LLM and embedding model are both served locally via Ollama.
 
 For common Windows setup issues (path length, activation policy, PATH warnings), see [README-QA.md](README-QA.md).
 
@@ -209,22 +209,17 @@ VECTOR_STORE_PATH=data/vector_store
 ALLOW_PRIVATE_URLS=false
 ```
 
-*(Optional) If testing with OpenAI, set `MODEL_PROVIDER=openai`, `OPENAI_API_KEY=<your-key>`, and your preferred OpenAI models.*
-
 ---
 
-## 7. Decoupled Provider Architecture
+## 7. Ollama-only Provider Architecture
 
-Notice how `providers.py` cleanly separates the embedding model from the generation LLM:
+The project is intentionally configured to use the same local stack for both embeddings and generation:
 
 | Setup Configuration | `EMBEDDING_PROVIDER` | `MODEL_PROVIDER` | Description |
 |---|---|---|---|
 | **Fully Local (Default)** | `ollama` | `ollama` | 100% private, zero API costs, runs offline. |
-| **Hybrid (Privacy retrieval, cloud answer)** | `ollama` | `openai` | Local embeddings, fast cloud LLM completion. |
-| **Hybrid (Cloud retrieval, local answer)** | `openai` | `ollama` | Cloud embeddings, local offline generation. |
-| **Fully Cloud** | `openai` | `openai` | Fully managed cloud API services. |
 
-> **Important Rule of Embeddings:** You must use the **exact same** embedding model to query an index that was used to create it. If you switch `EMBEDDING_PROVIDER` or `OLLAMA_EMBEDDING_MODEL`, delete `data/vector_store/` and rebuild the knowledge base.
+> **Important Rule of Embeddings:** You must use the **exact same** embedding model to query an index that was used to create it. If you switch `OLLAMA_EMBEDDING_MODEL`, delete `data/vector_store/` and rebuild the knowledge base.
 
 ---
 
@@ -269,7 +264,7 @@ Try these live adjustments during your walkthrough:
 ├── app.py                 # Streamlit UI interface & chat interaction
 ├── config.py              # Environment configuration & parameter validation
 ├── loaders.py             # Robust loaders for PDF, DOCX, Confluence MHTML & URLs
-├── providers.py           # Clean abstraction layer for Ollama and OpenAI
+├── providers.py           # Ollama-only model abstraction layer
 ├── rag.py                 # Core RAG pipeline: chunking, embedding, FAISS index, prompt assembly
 ├── data/                  # Local storage for uploaded files and FAISS vector index
 ├── examples/              # Sample onboarding documentation

@@ -27,9 +27,6 @@ class Settings:
     ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     ollama_llm_model: str = os.getenv("OLLAMA_LLM_MODEL", "")
     ollama_embedding_model: str = os.getenv("OLLAMA_EMBEDDING_MODEL", "")
-    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
-    openai_llm_model: str = os.getenv("OPENAI_LLM_MODEL", "")
-    openai_embedding_model: str = os.getenv("OPENAI_EMBEDDING_MODEL", "")
     top_k: int = _number("TOP_K", 4)
     chunk_size: int = _number("CHUNK_SIZE", 800)
     chunk_overlap: int = _number("CHUNK_OVERLAP", 100)
@@ -37,11 +34,11 @@ class Settings:
     allow_private_urls: bool = _flag("ALLOW_PRIVATE_URLS")
 
     def __post_init__(self) -> None:
-        supported = {"ollama", "openai"}
+        supported = {"ollama"}
         if self.model_provider not in supported:
-            raise ValueError("MODEL_PROVIDER must be 'ollama' or 'openai'.")
+            raise ValueError("MODEL_PROVIDER must be 'ollama'.")
         if self.embedding_provider not in supported:
-            raise ValueError("EMBEDDING_PROVIDER must be 'ollama' or 'openai'.")
+            raise ValueError("EMBEDDING_PROVIDER must be 'ollama'.")
         if self.chunk_overlap >= self.chunk_size:
             raise ValueError("CHUNK_OVERLAP must be smaller than CHUNK_SIZE.")
 
