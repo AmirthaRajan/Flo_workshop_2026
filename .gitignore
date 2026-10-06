@@ -1,11 +1,6 @@
+# Shared rules for both implementations (each folder has its own .gitignore too)
 .env
 .venv/
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.streamlit/
-
-data/documents/*
-!data/documents/.gitkeep
-data/vector_store/*
-!data/vector_store/.gitkeep
+.idea/
+*.iml
+.DS_Store

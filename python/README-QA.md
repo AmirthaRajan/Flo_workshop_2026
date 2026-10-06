@@ -1,6 +1,8 @@
-# Workshop Q&A: Windows Setup Fixes for New Machines
+# Workshop Q&A (Python Edition): Windows Setup Fixes for New Machines
 
-This guide captures the exact setup and troubleshooting steps validated while testing on a fresh Windows machine.
+This guide captures the exact setup and troubleshooting steps validated while testing on a fresh Windows machine. Run every command below from the `python` folder of the repository.
+
+For the Spring + LangChain4j edition, see [../spring/README-QA.md](../spring/README-QA.md).
 
 ## Q1) I get long package install errors while running pip install
 
@@ -21,7 +23,7 @@ Installing globally can use a very long path under AppData, which may hit Window
 Install everything inside a project-local virtual environment so paths are shorter.
 
 ```powershell
-Set-Location C:\Users\<USER_NAME>\Dev\Flo_workshop_2026
+Set-Location C:\Users\<USER_NAME>\Dev\Flo_workshop_2026\python
 
 # 1) Create local virtual environment
 python -m venv .venv
@@ -143,7 +145,7 @@ Use the call operator (&):
 Use this full sequence on a new machine:
 
 ```powershell
-Set-Location C:\Users\amirthasureshkumar\Dev\Flo_workshop_2026
+Set-Location C:\Users\<USER_NAME>\Dev\Flo_workshop_2026\python
 python -m venv .venv
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\.venv\Scripts\Activate.ps1

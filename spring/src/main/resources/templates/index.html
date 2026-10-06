@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Project Onboarding Chatbot</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+    <style>
+        body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #262730; }
+        h1 { margin-bottom: 0.2rem; }
+        .caption { color: #6b6f76; margin-top: 0; }
+        h2 { margin-top: 2rem; border-bottom: 1px solid #e6e6e6; padding-bottom: 0.3rem; }
+        .metrics { display: flex; gap: 2rem; }
+        .metric span { display: block; font-size: 0.85rem; color: #6b6f76; }
+        .metric strong { font-size: 1.8rem; font-weight: 500; }
+        label { display: block; margin: 0.8rem 0 0.3rem; }
+        input[type=text], input[type=url] { width: 100%; padding: 0.5rem; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; }
+        button { margin-top: 1rem; padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+        button.primary { background: #ff4b4b; color: #fff; border-color: #ff4b4b; }
+        .status { background: #f0f2f6; border-radius: 6px; padding: 0.6rem 1rem; margin-top: 1rem; }
+        .status ul { margin: 0.3rem 0; }
+        .success, .error { border-radius: 6px; padding: 0.8rem 1rem; margin-top: 1rem; white-space: pre-wrap; }
+        .success { background: #dff5e3; color: #1b5e20; }
+        .error { background: #fde2e2; color: #8a1c1c; }
+        .answer { white-space: pre-wrap; }
+        details { margin-top: 1rem; border: 1px solid #e6e6e6; border-radius: 6px; padding: 0.5rem 1rem; }
+        .chunk { white-space: pre-wrap; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+<h1>📚 Project Onboarding Chatbot</h1>
+<p class="caption">A small RAG application for the 45-minute workshop — Spring + LangChain4j edition</p>
+
+<h2>1. Configuration</h2>
+<div class="metrics">
+    <div class="metric"><span>LLM Provider</span><strong th:text="${llmProvider}">Ollama</strong></div>
+    <div class="metric"><span>Embedding Provider</span><strong th:text="${embeddingProvider}">Ollama</strong></div>
+</div>
+
+<h2>2. Knowledge ingestion</h2>
+<form method="post" th:action="@{/ingest}" enctype="multipart/form-data">
+    <label for="files">Upload PDF or DOCX files</label>
+    <input id="files" type="file" name="files" accept=".pdf,.docx" multiple>
+    <label for="url">Web or accessible wiki / Confluence URL (optional)</label>
+    <input id="url" type="text" name="url" th:value="${url}">
+    <button class="primary" type="submit">Build / Update Knowledge Base</button>
+</form>
+<div class="status" th:if="${steps}">
+    <strong>Building knowledge base...</strong>
+    <ul><li th:each="step : ${steps}" th:text="${step}"></li></ul>
+</div>
+<div class="success" th:if="${ingestSuccess}" th:text="${ingestSuccess}"></div>
+<div class="error" th:if="${ingestError}" th:text="${ingestError}"></div>
+
+<h2>3. Chat</h2>
+<form method="post" th:action="@{/ask}">
+    <label for="question">Ask a question about the project</label>
+    <input id="question" type="text" name="question" th:value="${question}"
+           placeholder="How do I set up the local development environment?">
+    <button type="submit">Ask</button>
+</form>
+<div class="error" th:if="${askError}" th:text="${askError}"></div>
+
+<div th:if="${answer}">
+    <h3>Answer</h3>
+    <div class="answer" th:text="${answer}"></div>
+
+    <h3>Sources</h3>
+    <ol><li th:each="source : ${sources}" th:text="${source.label}"></li></ol>
+
+    <details>
+        <summary>Retrieved Context</summary>
+        <div th:each="source, iter : ${sources}">
+            <p><strong th:text="'Chunk ' + ${iter.count}"></strong></p>
+            <div class="chunk" th:text="${source.content}"></div>
+        </div>
+    </details>
+</div>
+<script>
+    // Like Streamlit's spinner: models on CPU can take a minute, so show that work is in progress.
+    document.querySelectorAll("form").forEach(form => form.addEventListener("submit", () => {
+        const button = form.querySelector("button");
+        button.disabled = true;
+        button.textContent = form.action.endsWith("/ask")
+            ? "⏳ Thinking… (can take a minute on CPU)"
+            : "⏳ Embedding documents… (can take a few minutes on CPU)";
+    }));
+</script>
+</body>
+</html>
