@@ -66,8 +66,11 @@ public class RagService {
         if (chunks.isEmpty()) {
             throw new IllegalArgumentException("No document text was found to add to the knowledge base.");
         }
-        InMemoryEmbeddingStore<TextSegment> vectorStore =
-                Files.exists(indexFile()) ? InMemoryEmbeddingStore.fromFile(indexFile()) : new InMemoryEmbeddingStore<>();
+
+        // Rebuild from the latest source material so stale chunks from a previous
+        // document upload or URL do not remain in the knowledge base.
+        resetVectorStore();
+        InMemoryEmbeddingStore<TextSegment> vectorStore = new InMemoryEmbeddingStore<>();
 
         // Embeddings let us compare meaning instead of only matching exact words.
         List<Embedding> embeddings = embeddingModel.embedAll(chunks).content();
@@ -76,6 +79,12 @@ public class RagService {
         Files.createDirectories(indexFile().getParent());
         vectorStore.serializeToFile(indexFile());
         return vectorStore;
+    }
+
+    /** Delete the persisted vector store so the next build starts from a clean slate. */
+    public synchronized void resetVectorStore() throws IOException {
+        Path vectorStoreFile = indexFile();
+        Files.deleteIfExists(vectorStoreFile);
     }
 
     /** Open the locally persisted knowledge base. */

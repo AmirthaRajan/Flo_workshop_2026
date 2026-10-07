@@ -104,7 +104,7 @@ class RagTests(unittest.TestCase):
         self.assertIn("Which Python version?", prompt)
         self.assertIn(rag.FALLBACK_ANSWER, prompt)
 
-    def test_new_chunks_are_added_to_persisted_vector_store(self):
+    def test_new_build_replaces_persisted_vector_store_contents(self):
         class FakeEmbeddings(Embeddings):
             def embed_documents(self, texts):
                 return [[float(len(text)), 1.0] for text in texts]
@@ -123,7 +123,27 @@ class RagTests(unittest.TestCase):
                     [Document(page_content="second")]
                 )
 
-        self.assertEqual(vector_store.index.ntotal, 2)
+        self.assertEqual(vector_store.index.ntotal, 1)
+
+    def test_reset_vector_store_removes_persisted_contents(self):
+        class FakeEmbeddings(Embeddings):
+            def embed_documents(self, texts):
+                return [[float(len(text)), 1.0] for text in texts]
+
+            def embed_query(self, text):
+                return [float(len(text)), 1.0]
+
+        with tempfile.TemporaryDirectory() as directory:
+            test_settings = SimpleNamespace(vector_store_path=directory)
+            with (
+                patch.object(rag, "settings", test_settings),
+                patch.object(rag, "get_embeddings", return_value=FakeEmbeddings()),
+            ):
+                rag.create_vector_store([Document(page_content="first")])
+                rag.reset_vector_store()
+
+            self.assertTrue(Path(directory).exists())
+            self.assertEqual(list(Path(directory).iterdir()), [])
 
 
 if __name__ == "__main__":

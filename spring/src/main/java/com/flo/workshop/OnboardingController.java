@@ -79,6 +79,17 @@ public class OnboardingController {
         return "index";
     }
 
+    @PostMapping("/reset")
+    String reset(Model model) {
+        try {
+            rag.resetVectorStore();
+            model.addAttribute("resetSuccess", "Knowledge base reset. Build again to load fresh documents.");
+        } catch (Exception error) {
+            model.addAttribute("resetError", "Could not reset the knowledge base: " + error.getMessage());
+        }
+        return "index";
+    }
+
     @PostMapping("/ask")
     String ask(@RequestParam(name = "question", defaultValue = "") String question, Model model) {
         model.addAttribute("question", question);

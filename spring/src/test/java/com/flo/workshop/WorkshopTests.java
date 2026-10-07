@@ -136,14 +136,25 @@ class WorkshopTests {
         }
 
         @Test
-        void newChunksAreAddedToPersistedVectorStore(@TempDir Path directory) throws Exception {
+        void newBuildReplacesPersistedVectorStoreContents(@TempDir Path directory) throws Exception {
             WorkshopSettings settings = new WorkshopSettings("ollama", "ollama", 4, 800, 100, directory.toString(), "y", false);
             RagService rag = new RagService(settings, new FakeEmbeddings(), null);
 
             rag.createVectorStore(List.of(TextSegment.from("first")));
             rag.createVectorStore(List.of(TextSegment.from("second")));
 
-            assertThat(rag.loadVectorStore().size()).isEqualTo(2);
+            assertThat(rag.loadVectorStore().size()).isEqualTo(1);
+        }
+
+        @Test
+        void resetVectorStoreRemovesPersistedContents(@TempDir Path directory) throws Exception {
+            WorkshopSettings settings = new WorkshopSettings("ollama", "ollama", 4, 800, 100, directory.toString(), "y", false);
+            RagService rag = new RagService(settings, new FakeEmbeddings(), null);
+
+            rag.createVectorStore(List.of(TextSegment.from("first")));
+            rag.resetVectorStore();
+
+            assertThat(Files.exists(Path.of(directory.toString(), "vector_store.json"))).isFalse();
         }
     }
 
