@@ -9,6 +9,12 @@ The same application is implemented twice so you can follow the workshop in the 
 |---|---|---|---|
 | 🐍 **Python** | [`python/`](python/) | LangChain · FAISS · Streamlit | [python/README.md](python/README.md) |
 | 🍃 **Java / Spring** | [`spring/`](spring/) | Spring Boot · LangChain4j · Thymeleaf | [spring/README.md](spring/README.md) |
+| **Langflow visual workshop** | [`langflow/`](langflow/) | Langflow · Ollama · Chroma | [langflow/README.md](langflow/README.md) |
+
+The [Langflow workshop project](langflow/README.md) includes importable
+drag-and-drop ingestion and chat flows with separate Split Text, Ollama
+Embeddings and local Chroma components. It is a Markdown-based teaching
+edition, not a full migration of the original applications' specialized loaders.
 
 This README covers everything **both editions share**: the concepts, architecture, configuration knobs, model sizing, Ollama setup and demo script. Each edition's README only covers installing, running and testing that edition.
 
