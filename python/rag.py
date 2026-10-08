@@ -1,5 +1,6 @@
 """The complete, intentionally small RAG workflow."""
 
+import shutil
 from pathlib import Path
 
 from langchain_community.vectorstores import FAISS
@@ -23,24 +24,18 @@ def split_documents(documents: list[Document]) -> list[Document]:
 
 
 def create_vector_store(chunks: list[Document]) -> FAISS:
-    """Convert chunks to vectors and persist the searchable FAISS index."""
+    """Rebuild the searchable FAISS index from the current knowledge base."""
     if not chunks:
         raise ValueError("No document text was found to add to the knowledge base.")
 
+    # Each rebuild should reflect only the current input sources, not stale data
+    # left behind from a previous document set or earlier model training run.
+    Path(settings.vector_store_path).mkdir(parents=True, exist_ok=True)
+    reset_vector_store()
+
     # Embeddings let us compare meaning instead of only matching exact words.
     embeddings = get_embeddings()
-    index_file = Path(settings.vector_store_path) / "index.faiss"
-    if index_file.exists():
-        vector_store = FAISS.load_local(
-            settings.vector_store_path,
-            embeddings,
-            allow_dangerous_deserialization=True,
-        )
-        vector_store.add_documents(chunks)
-    else:
-        vector_store = FAISS.from_documents(chunks, embeddings)
-
-    Path(settings.vector_store_path).mkdir(parents=True, exist_ok=True)
+    vector_store = FAISS.from_documents(chunks, embeddings)
     vector_store.save_local(settings.vector_store_path)
     return vector_store
 
@@ -60,6 +55,19 @@ def load_vector_store() -> FAISS:
         get_embeddings(),
         allow_dangerous_deserialization=True,
     )
+
+
+def reset_vector_store() -> None:
+    """Remove the persisted vector store so the next rebuild starts fresh."""
+    vector_store_path = Path(settings.vector_store_path)
+    if not vector_store_path.exists():
+        return
+
+    for child in vector_store_path.iterdir():
+        if child.is_dir():
+            shutil.rmtree(child)
+        else:
+            child.unlink()
 
 
 def build_prompt(context: str, question: str) -> str:

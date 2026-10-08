@@ -45,12 +45,17 @@
     <input id="url" type="text" name="url" th:value="${url}">
     <button class="primary" type="submit">Build / Update Knowledge Base</button>
 </form>
+<form method="post" th:action="@{/reset}">
+<button type="submit">Reset Knowledge Base</button>
+</form>
 <div class="status" th:if="${steps}">
-    <strong>Building knowledge base...</strong>
-    <ul><li th:each="step : ${steps}" th:text="${step}"></li></ul>
+<strong>Building knowledge base...</strong>
+<ul><li th:each="step : ${steps}" th:text="${step}"></li></ul>
 </div>
 <div class="success" th:if="${ingestSuccess}" th:text="${ingestSuccess}"></div>
 <div class="error" th:if="${ingestError}" th:text="${ingestError}"></div>
+<div class="success" th:if="${resetSuccess}" th:text="${resetSuccess}"></div>
+<div class="error" th:if="${resetError}" th:text="${resetError}"></div>
 
 <h2>3. Chat</h2>
 <form method="post" th:action="@{/ask}">
@@ -83,7 +88,9 @@
         button.disabled = true;
         button.textContent = form.action.endsWith("/ask")
             ? "⏳ Thinking… (can take a minute on CPU)"
-            : "⏳ Embedding documents… (can take a few minutes on CPU)";
+            : form.action.endsWith("/reset")
+                ? "⏳ Resetting knowledge base…"
+                : "⏳ Embedding documents… (can take a few minutes on CPU)";
     }));
 </script>
 </body>

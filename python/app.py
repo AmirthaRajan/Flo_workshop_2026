@@ -4,7 +4,7 @@ import streamlit as st
 
 from config import settings
 from loaders import load_file, load_url, save_uploaded_file
-from rag import answer_question, create_vector_store, split_documents
+from rag import answer_question, create_vector_store, reset_vector_store, split_documents
 
 st.set_page_config(page_title="Project Onboarding Chatbot", page_icon="📚")
 st.title("📚 Project Onboarding Chatbot")
@@ -46,6 +46,13 @@ if st.button("Build / Update Knowledge Base", type="primary"):
             f"Could not build the knowledge base: {error}\n\n"
             "Check your model settings and make sure Ollama is running."
         )
+
+if st.button("Reset Knowledge Base", type="secondary"):
+    try:
+        reset_vector_store()
+        st.success("Knowledge base reset. Build again to load fresh documents.")
+    except Exception as error:
+        st.error(f"Could not reset the knowledge base: {error}")
 
 st.header("3. Chat")
 question = st.text_input(
